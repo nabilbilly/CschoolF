@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+export const API_BASE_URL = 'https://fastapi-production-bc086.up.railway.app/api/v1';
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = localStorage.getItem('student_token') || localStorage.getItem('token');
