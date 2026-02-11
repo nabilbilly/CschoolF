@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { studentsService } from '../../../services/studentsService';
 import type { StudentResponse } from '../../../services/studentsService';
 import { academicsService } from '../../../services/academicsService';
+import { StudentAvatar } from '../../../components/common/StudentAvatar';
 import type { ClassRoom, AcademicYear } from '../../../services/academicsService';
 import { admissionsService } from '../../../services/admissionsService';
 
@@ -304,9 +305,12 @@ export const AdminStudentManager = () => {
                                 <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs uppercase">
-                                                {student.first_name[0]}{student.last_name[0]}
-                                            </div>
+                                            <StudentAvatar
+                                                firstName={student.first_name}
+                                                lastName={student.last_name}
+                                                photo={student.photo}
+                                                size="sm"
+                                            />
                                             <div>
                                                 <div className="font-medium text-slate-900">{student.first_name} {student.last_name}</div>
                                                 <div className="text-xs text-indigo-600 font-mono font-bold">{student.index_number || 'PENDING'}</div>
@@ -358,9 +362,13 @@ export const AdminStudentManager = () => {
                             {/* Modal Header */}
                             <div className="p-6 border-b border-slate-200 flex justify-between items-start bg-slate-50">
                                 <div className="flex gap-4">
-                                    <div className="h-16 w-16 rounded-full bg-white border-2 border-primary-100 flex items-center justify-center text-2xl font-bold text-primary-600 shadow-sm uppercase">
-                                        {selectedStudent.first_name[0]}{selectedStudent.last_name[0]}
-                                    </div>
+                                    <StudentAvatar
+                                        firstName={selectedStudent.first_name}
+                                        lastName={selectedStudent.last_name}
+                                        photo={selectedStudent.photo}
+                                        size="xl"
+                                        className="bg-white"
+                                    />
                                     <div>
                                         <h2 className="text-xl font-bold text-slate-800">{selectedStudent.first_name} {selectedStudent.last_name}</h2>
                                         <div className="flex items-center gap-2 mt-1">
@@ -670,7 +678,7 @@ export const AdminStudentManager = () => {
                     alert('New Student Admission Processed Successfully!');
                 }}
             />
-        </div >
+        </div>
     );
 };
 

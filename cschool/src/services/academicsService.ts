@@ -1,7 +1,7 @@
 import { fetchApi } from './api';
 
-export type YearStatus = 'Active' | 'Draft' | 'Archived';
-export type TermStatus = 'Active' | 'Draft' | 'Closed';
+export type YearStatus = 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
+export type TermStatus = 'ACTIVE' | 'DRAFT' | 'CLOSED';
 
 export interface Term {
     id: number;

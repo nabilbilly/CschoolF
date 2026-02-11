@@ -61,6 +61,13 @@ export const studentsService = {
         return fetchApi<StudentResponse>(`/students/me/profile`);
     },
 
+    updateProfile: async (data: any): Promise<StudentResponse> => {
+        return fetchApi<StudentResponse>(`/students/me/profile`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        });
+    },
+
     updateStudent: async (id: number, data: any): Promise<StudentResponse> => {
         return fetchApi<StudentResponse>(`/students/${id}`, {
             method: 'PATCH',

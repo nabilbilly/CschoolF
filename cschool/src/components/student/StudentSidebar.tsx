@@ -17,15 +17,17 @@ import { useState } from 'react';
 import { cn } from '../../lib/utils';
 
 import { authService } from '../../services/authService';
+import { studentsService, type StudentResponse } from '../../services/studentsService';
+import { mediaService } from '../../services/mediaService';
+import { StudentAvatar } from '../common/StudentAvatar';
+import { useEffect } from 'react';
 
-// Mock student data - in a real app this would come from context/auth
-const getStudentData = () => {
-    const session = authService.getSession();
-    return {
-        name: session.name || "Student",
-        class: "JHS 2 - A", // Class still mock until we have a profile fetch
-        avatar: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?q=80&w=150&auto=format&fit=crop"
-    };
+// Initial mock data
+const initialStudent = {
+    first_name: "Student",
+    last_name: "",
+    class: "Loading...",
+    photo: null as string | null
 };
 
 const navItems = [
@@ -46,8 +48,63 @@ interface StudentSidebarProps {
 
 export const StudentSidebar = ({ isOpen, onClose }: StudentSidebarProps) => {
     const [isFeesOpen, setIsFeesOpen] = useState(false);
+    const [student, setStudent] = useState(initialStudent);
+    const [isUpdating, setIsUpdating] = useState(false);
     const location = useLocation();
-    const student = getStudentData();
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const profile = await studentsService.getProfile();
+                setStudent({
+                    first_name: profile.first_name,
+                    last_name: profile.last_name,
+                    class: `${profile.current_class} ${profile.current_stream !== 'N/A' ? profile.current_stream : ''}`,
+                    photo: profile.photo
+                });
+            } catch (err) {
+                const session = authService.getSession();
+                const sessionName = session.name;
+                if (sessionName) {
+                    setStudent(prev => ({ ...prev, name: sessionName }));
+                }
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    const handlePhotoUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Basic validation (1MB limit)
+        if (file.size > 1 * 1024 * 1024) {
+            alert('Image size must be 1MB or less');
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            // 1. Upload the image
+            const uploadRes = await mediaService.uploadImage(file);
+
+            // 2. Update the student profile
+            const updatedProfile = await studentsService.updateProfile({ photo: uploadRes.url });
+
+            // 3. Update local state
+            setStudent(prev => ({
+                ...prev,
+                photo: updatedProfile.photo
+            }));
+
+        } catch (err: any) {
+            console.error("Failed to update sidebar photo:", err);
+            alert(err.message || 'Failed to update photo');
+        } finally {
+            setIsUpdating(false);
+            if (e.target) e.target.value = '';
+        }
+    };
 
     // Check if any fees sub-route is active to auto-expand or highlight parent
     const isFeesActive = location.pathname.includes('/student/fees') || location.pathname.includes('/student/clearance');
@@ -77,14 +134,26 @@ export const StudentSidebar = ({ isOpen, onClose }: StudentSidebarProps) => {
                             <School size={24} />
                         </div>
                         <div className="relative inline-block mb-2">
-                            <img
-                                src={student.avatar}
-                                alt={student.name}
-                                className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-md mx-auto"
+                            <StudentAvatar
+                                firstName={student.first_name}
+                                lastName={student.last_name}
+                                photo={student.photo}
+                                size="lg"
+                                isUpdating={isUpdating}
+                                showCameraOverlay={true}
+                                onClick={() => !isUpdating && document.getElementById('sidebar-photo-upload')?.click()}
                             />
-                            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                            <input
+                                id="sidebar-photo-upload"
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handlePhotoUpdate}
+                                disabled={isUpdating}
+                            />
                         </div>
-                        <h3 className="font-bold text-slate-800 text-lg">{student.name}</h3>
+                        <h3 className="font-bold text-slate-800 text-lg">{student.first_name} {student.last_name}</h3>
                         <p className="text-primary-600 font-medium text-sm bg-primary-50 inline-block px-3 py-1 rounded-full mt-1">
                             {student.class}
                         </p>

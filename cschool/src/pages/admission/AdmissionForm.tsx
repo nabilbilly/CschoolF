@@ -13,7 +13,9 @@ import { evoucherService } from '../../services/evoucherService';
 import { academicsService } from '../../services/academicsService';
 import type { ClassRoom, Term, AcademicYear } from '../../services/academicsService';
 import { admissionsService } from '../../services/admissionsService';
+import { mediaService } from '../../services/mediaService';
 import { LimitedInput } from '../../components/common/LimitedInput';
+import { StudentAvatar } from '../../components/common/StudentAvatar';
 
 interface GuardianData {
     name: string;
@@ -40,10 +42,13 @@ export const AdmissionForm = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [isVerifying, setIsVerifying] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [voucherToken, setVoucherToken] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [referenceId, setReferenceId] = useState<string | null>(null);
+    const [voucherNumber, setVoucherNumber] = useState<string | null>(null);
+    const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
     // Data State
     const [classes, setClasses] = useState<ClassRoom[]>([]);
@@ -109,10 +114,12 @@ export const AdmissionForm = () => {
                 const vRes = await evoucherService.checkSession(token);
                 if (!vRes.valid) {
                     sessionStorage.removeItem('admission_voucher_token');
+                    sessionStorage.removeItem('admission_voucher_number');
                     navigate('/admission/verification');
                     return;
                 }
                 setVoucherToken(token);
+                if (vRes.voucher_number) setVoucherNumber(vRes.voucher_number);
 
                 const [classList, years] = await Promise.all([
                     academicsService.getClasses(),
@@ -120,19 +127,52 @@ export const AdmissionForm = () => {
                 ]);
 
                 setClasses(classList);
-                const currentYear = years.find((y: AcademicYear) => y.id === vRes.academic_year_id);
+                const currentYear = years.find((y: AcademicYear) => y.id === vRes.academic_year_id) || years.find((y: AcademicYear) => y.status === 'ACTIVE');
 
                 if (currentYear) {
                     setActiveYear(currentYear);
                     const termData = await academicsService.getTerms(currentYear.id);
-                    const filteredTerms = termData.filter((t: Term) => t.status !== 'Draft');
-                    setTerms(filteredTerms);
+                    setTerms(termData);
+                    const filteredTerms = termData; // Use all terms for default selection logic
 
-                    setPlacement(prev => ({
-                        ...prev,
-                        academic_year_id: currentYear.id,
-                        term_id: filteredTerms.length > 0 ? filteredTerms[0].id : 0
-                    }));
+                    // Restore draft logic
+                    const vNum = vRes.voucher_number || sessionStorage.getItem('admission_voucher_number');
+                    if (vNum) {
+                        const savedDraft = localStorage.getItem(`admission_draft_${vNum}`);
+                        if (savedDraft) {
+                            try {
+                                const parsed = JSON.parse(savedDraft);
+                                if (parsed.student) setStudent(prev => ({ ...prev, ...parsed.student }));
+                                if (parsed.guardians) setGuardians(parsed.guardians);
+                                if (parsed.medical) setMedical(prev => ({ ...prev, ...parsed.medical }));
+                                if (parsed.placement) {
+                                    setPlacement(prev => ({
+                                        ...prev,
+                                        ...parsed.placement,
+                                        academic_year_id: currentYear.id // Force correct year
+                                    }));
+                                } else {
+                                    const activeTerm = filteredTerms.find((t: any) => t.status === 'ACTIVE') || (filteredTerms.length > 0 ? filteredTerms[0] : null);
+                                    setPlacement(prev => ({
+                                        ...prev,
+                                        academic_year_id: currentYear.id,
+                                        term_id: activeTerm ? activeTerm.id : 0
+                                    }));
+                                }
+                                if (parsed.currentStep) setCurrentStep(parsed.currentStep);
+                            } catch (e) {
+                                console.error('Failed to parse draft:', e);
+                            }
+                        } else {
+                            // Default placement if no draft
+                            const activeTerm = filteredTerms.find((t: any) => t.status === 'ACTIVE') || (filteredTerms.length > 0 ? filteredTerms[0] : null);
+                            setPlacement(prev => ({
+                                ...prev,
+                                academic_year_id: currentYear.id,
+                                term_id: activeTerm ? activeTerm.id : 0
+                            }));
+                        }
+                    }
                 }
                 setIsVerifying(false);
             } catch (err: any) {
@@ -143,6 +183,29 @@ export const AdmissionForm = () => {
         };
         init();
     }, [navigate]);
+
+    // Save Draft Effect
+    useEffect(() => {
+        if (!voucherNumber || isVerifying || isSubmitted) return;
+
+        const saveDraft = () => {
+            setDraftStatus('saving');
+            const draftData = {
+                student,
+                guardians,
+                medical,
+                placement,
+                currentStep,
+                updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(`admission_draft_${voucherNumber}`, JSON.stringify(draftData));
+            setTimeout(() => setDraftStatus('saved'), 500);
+            setTimeout(() => setDraftStatus('idle'), 3000);
+        };
+
+        const timeoutId = setTimeout(saveDraft, 1000); // Debounce save
+        return () => clearTimeout(timeoutId);
+    }, [student, guardians, medical, placement, currentStep, voucherNumber, isVerifying, isSubmitted]);
 
     const handleGuardianChange = (index: number, field: keyof GuardianData, value: string) => {
         const newGuardians = [...guardians];
@@ -186,6 +249,7 @@ export const AdmissionForm = () => {
                 if (!g.relationship_type) errors[`guardian_${idx}_relationship`] = 'Relationship is required';
                 if (!g.phone.trim()) errors[`guardian_${idx}_phone`] = 'Phone number is required';
                 if (!g.address.trim()) errors[`guardian_${idx}_address`] = 'Address is required';
+                if (g.email && !g.email.includes('@')) errors[`guardian_${idx}_email`] = 'Invalid email address';
             });
         }
 
@@ -214,6 +278,30 @@ export const AdmissionForm = () => {
         window.scrollTo(0, 0);
     };
 
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Basic validation (1MB limit)
+        if (file.size > 1 * 1024 * 1024) {
+            setError('Image size must be 1MB or less');
+            return;
+        }
+
+        setIsUploading(true);
+        setError(null);
+
+        try {
+            const res = await mediaService.uploadImage(file);
+            setStudent(prev => ({ ...prev, photo: res.url }));
+        } catch (err: any) {
+            setError(err.message || 'Photo upload failed');
+        } finally {
+            setIsUploading(false);
+            if (e.target) e.target.value = '';
+        }
+    };
+
     const handleSubmit = async () => {
         if (!declaration) {
             setError('Please confirm the accuracy of information.');
@@ -240,6 +328,10 @@ export const AdmissionForm = () => {
             setReferenceId(`ADM-${response.id}-${new Date().getFullYear()}`);
             setIsSubmitted(true);
             sessionStorage.removeItem('admission_voucher_token');
+            sessionStorage.removeItem('admission_voucher_number');
+            if (voucherNumber) {
+                localStorage.removeItem(`admission_draft_${voucherNumber}`);
+            }
         } catch (err: any) {
             setError(err.message || 'Submission failed. Please re-verify voucher.');
             if (err.status === 400) setTimeout(() => navigate('/admission/verification'), 2000);
@@ -343,27 +435,42 @@ export const AdmissionForm = () => {
                         </div>
                     </div>
 
-                    {/* Desktop Stepper */}
-                    <div className="hidden lg:flex items-center gap-3">
-                        {steps.map((s, idx) => (
-                            <div key={s.id} className="flex items-center">
-                                <motion.div
-                                    onClick={() => currentStep > s.id && setCurrentStep(s.id)}
-                                    whileHover={currentStep > s.id ? { scale: 1.1 } : {}}
-                                    className={cn(
-                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all cursor-pointer shadow-sm border-2",
-                                        currentStep === s.id ? "bg-primary-600 border-primary-600 text-white shadow-lg ring-4 ring-primary-50" :
-                                            currentStep > s.id ? "bg-emerald-500 border-emerald-500 text-white" :
-                                                "bg-white border-slate-100 text-slate-300"
+                    <div className="flex items-center gap-6">
+                        {draftStatus !== 'idle' && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full border border-emerald-100"
+                            >
+                                <div className={cn("w-2 h-2 rounded-full", draftStatus === 'saving' ? "bg-amber-400 animate-pulse" : "bg-emerald-500")} />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 italic">
+                                    {draftStatus === 'saving' ? 'Syncing...' : 'Draft Secured'}
+                                </span>
+                            </motion.div>
+                        )}
+
+                        {/* Desktop Stepper */}
+                        <div className="hidden lg:flex items-center gap-3">
+                            {steps.map((s, idx) => (
+                                <div key={s.id} className="flex items-center">
+                                    <motion.div
+                                        onClick={() => currentStep > s.id && setCurrentStep(s.id)}
+                                        whileHover={currentStep > s.id ? { scale: 1.1 } : {}}
+                                        className={cn(
+                                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all cursor-pointer shadow-sm border-2",
+                                            currentStep === s.id ? "bg-primary-600 border-primary-600 text-white shadow-lg ring-4 ring-primary-50" :
+                                                currentStep > s.id ? "bg-emerald-500 border-emerald-500 text-white" :
+                                                    "bg-white border-slate-100 text-slate-300"
+                                        )}
+                                    >
+                                        {currentStep > s.id ? <Check size={20} strokeWidth={4} /> : <s.icon size={20} />}
+                                    </motion.div>
+                                    {idx < steps.length - 1 && (
+                                        <div className={cn("w-6 h-0.5 mx-1 rounded-full", currentStep > s.id ? "bg-emerald-500" : "bg-slate-100")} />
                                     )}
-                                >
-                                    {currentStep > s.id ? <Check size={20} strokeWidth={4} /> : <s.icon size={20} />}
-                                </motion.div>
-                                {idx < steps.length - 1 && (
-                                    <div className={cn("w-6 h-0.5 mx-1 rounded-full", currentStep > s.id ? "bg-emerald-500" : "bg-slate-100")} />
-                                )}
-                            </div>
-                        ))}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </header>
@@ -455,7 +562,7 @@ export const AdmissionForm = () => {
                                         </div>
                                         <div className="space-y-3">
                                             <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Date of Birth *</label>
-                                            <input value={student.date_of_birth} onChange={e => { setStudent({ ...student, date_of_birth: e.target.value }); if (formErrors.date_of_birth) setFormErrors({ ...formErrors, date_of_birth: '' }); }} type="date" className={cn("w-full h-16 bg-slate-50 border-2 border-transparent rounded-[1.25rem] px-8 outline-none focus:border-primary-600 focus:bg-white transition-all font-bold italic", formErrors.date_of_birth && "border-rose-300 bg-rose-50/30")} />
+                                            <input value={student.date_of_birth} onChange={e => { setStudent({ ...student, date_of_birth: e.target.value }); if (formErrors.date_of_birth) setFormErrors({ ...formErrors, date_of_birth: '' }); }} type="date" className={cn("w-full h-16 bg-slate-50 border-2 border-slate-200 rounded-[1.25rem] px-8 outline-none focus:border-primary-600 focus:bg-white transition-all font-bold italic", formErrors.date_of_birth && "border-rose-300 bg-rose-50/30")} />
                                             <ErrorText error={formErrors.date_of_birth} />
                                         </div>
                                         <LimitedInput
@@ -492,9 +599,42 @@ export const AdmissionForm = () => {
                                         <div className="flex items-center gap-3 text-indigo-600"><Info size={18} /> <p className="text-[10px] font-black uppercase tracking-widest">Important Info</p></div>
                                         <p className="text-sm text-indigo-900/60 font-medium italic leading-relaxed">Ensure all bio-data matches official identity documents. This data will be used for permanent academic records.</p>
                                     </div>
-                                    <div className="aspect-[4/5] bg-slate-50 rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center p-8 group hover:border-primary-200 transition-all cursor-pointer relative overflow-hidden shadow-inner">
-                                        {student.photo ? <img src={student.photo} className="absolute inset-0 w-full h-full object-cover" /> : <><Upload size={48} className="text-slate-200 group-hover:scale-110 group-hover:text-primary-600 transition-all mb-4" /><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Click to upload Passport Photo</p></>}
-                                        <input type="file" className="hidden" />
+                                    <div
+                                        onClick={() => document.getElementById('passport-upload')?.click()}
+                                        className="aspect-[4/5] bg-slate-50 rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center p-8 group hover:border-primary-200 transition-all cursor-pointer relative overflow-hidden shadow-inner"
+                                    >
+                                        {isUploading ? (
+                                            <div className="flex flex-col items-center gap-4">
+                                                <div className="w-10 h-10 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin" />
+                                                <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest">Processing...</p>
+                                            </div>
+                                        ) : student.photo ? (
+                                            <div className="relative w-full h-full group/photo group">
+                                                <StudentAvatar
+                                                    firstName={student.first_name}
+                                                    lastName={student.last_name}
+                                                    photo={student.photo}
+                                                    size="2xl"
+                                                    className="w-full h-full rounded-[2.5rem]"
+                                                />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-[2.5rem]">
+                                                    <p className="text-white text-[10px] font-black uppercase tracking-widest">Change Photo</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Upload size={48} className="text-slate-200 group-hover:scale-110 group-hover:text-primary-600 transition-all mb-4" />
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Click to upload Passport Photo</p>
+                                            </>
+                                        )}
+                                        <input
+                                            id="passport-upload"
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handlePhotoUpload}
+                                            disabled={isUploading}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -533,7 +673,7 @@ export const AdmissionForm = () => {
                                             </div>
                                             <div className="space-y-3">
                                                 <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Relationship *</label>
-                                                <select value={g.relationship_type} onChange={e => handleGuardianChange(idx, 'relationship_type', e.target.value)} className={cn("w-full h-16 bg-slate-50 border-2 border-transparent rounded-[1.25rem] px-8 outline-none focus:border-emerald-500 focus:bg-white transition-all font-bold italic appearance-none cursor-pointer", formErrors[`guardian_${idx}_relationship`] && "border-rose-300 bg-rose-50/30")}>
+                                                <select value={g.relationship_type} onChange={e => handleGuardianChange(idx, 'relationship_type', e.target.value)} className={cn("w-full h-16 bg-slate-50 border-2 border-slate-200 rounded-[1.25rem] px-8 outline-none focus:border-emerald-500 focus:bg-white transition-all font-bold italic appearance-none cursor-pointer", formErrors[`guardian_${idx}_relationship`] && "border-rose-300 bg-rose-50/30")}>
                                                     <option value="">Select Relationship...</option>
                                                     {['Father', 'Mother', 'Uncle', 'Aunt', 'Brother', 'Sister', 'Other'].map(r => <option key={r} value={r}>{r}</option>)}
                                                 </select>
@@ -554,7 +694,8 @@ export const AdmissionForm = () => {
                                                     label="Primary Phone *"
                                                     value={g.phone}
                                                     onChange={val => handleGuardianChange(idx, 'phone', val)}
-                                                    maxLength={15}
+                                                    maxLength={11}
+                                                    numericOnly
                                                     error={formErrors[`guardian_${idx}_phone`]}
                                                     placeholder="0XXXX XXXXXX"
                                                     icon={<Phone size={18} />}
@@ -565,7 +706,8 @@ export const AdmissionForm = () => {
                                                     label="Secondary / Alternative Phone"
                                                     value={g.secondary_phone || ''}
                                                     onChange={val => handleGuardianChange(idx, 'secondary_phone', val)}
-                                                    maxLength={15}
+                                                    maxLength={11}
+                                                    numericOnly
                                                     placeholder="Optional"
                                                 />
                                             </div>
@@ -575,6 +717,7 @@ export const AdmissionForm = () => {
                                                     value={g.email || ''}
                                                     onChange={val => handleGuardianChange(idx, 'email', val)}
                                                     maxLength={100}
+                                                    error={formErrors[`guardian_${idx}_email`]}
                                                     placeholder="example@domain.com"
                                                     icon={<Mail size={18} />}
                                                 />
@@ -660,8 +803,8 @@ export const AdmissionForm = () => {
                                         <label className="text-[10px] font-black text-primary-600 uppercase ml-2 tracking-widest">Target Term *</label>
                                         <div className="relative">
                                             <Calendar size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-primary-300" />
-                                            <select value={placement.term_id} onChange={e => { setPlacement({ ...placement, term_id: parseInt(e.target.value) }); if (formErrors.term_id) setFormErrors({ ...formErrors, term_id: '' }); }} className={cn("w-full h-20 bg-slate-50 border-2 border-transparent rounded-[1.5rem] pl-16 pr-8 font-black text-2xl italic outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer shadow-sm appearance-none", formErrors.term_id && "border-rose-300 bg-rose-50/30")}>
-                                                <option value="">Choose Term...</option>
+                                            <select value={placement.term_id || 0} onChange={e => { setPlacement({ ...placement, term_id: parseInt(e.target.value) || 0 }); if (formErrors.term_id) setFormErrors({ ...formErrors, term_id: '' }); }} className={cn("w-full h-20 bg-slate-50 border-2 border-slate-200 rounded-[1.5rem] pl-16 pr-8 font-black text-2xl italic outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer shadow-sm appearance-none", formErrors.term_id && "border-rose-300 bg-rose-50/30")}>
+                                                <option value={0}>Choose Term...</option>
                                                 {terms.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                             </select>
                                         </div>
@@ -669,7 +812,7 @@ export const AdmissionForm = () => {
                                     </div>
                                     <div className="space-y-4">
                                         <label className="text-[10px] font-black text-primary-600 uppercase ml-2 tracking-widest">Applying for Class *</label>
-                                        <select value={placement.class_id} onChange={e => { setPlacement({ ...placement, class_id: parseInt(e.target.value) }); if (formErrors.class_id) setFormErrors({ ...formErrors, class_id: '' }); }} className={cn("w-full h-20 bg-slate-50 border-2 border-transparent rounded-[1.5rem] px-8 font-black text-2xl italic outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer shadow-sm appearance-none", formErrors.class_id && "border-rose-300 bg-rose-50/30")}>
+                                        <select value={placement.class_id} onChange={e => { setPlacement({ ...placement, class_id: parseInt(e.target.value) }); if (formErrors.class_id) setFormErrors({ ...formErrors, class_id: '' }); }} className={cn("w-full h-20 bg-slate-50 border-2 border-slate-200 rounded-[1.5rem] px-8 font-black text-2xl italic outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer shadow-sm appearance-none", formErrors.class_id && "border-rose-300 bg-rose-50/30")}>
                                             <option value="">Choose Class...</option>
                                             {classes.map(c => <option key={c.id} value={c.id}>{c.name} ({c.level})</option>)}
                                         </select>
@@ -731,10 +874,10 @@ export const AdmissionForm = () => {
                         )}
                     </motion.div>
                 </AnimatePresence>
-            </main>
+            </main >
 
             {/* Premium Action Dock */}
-            <div className="fixed bottom-0 left-0 right-0 z-[100] p-10 pointer-events-none">
+            < div className="fixed bottom-0 left-0 right-0 z-[100] p-10 pointer-events-none" >
                 <div className="max-w-4xl mx-auto flex items-center justify-between pointer-events-auto">
                     <div className="flex-1 bg-slate-900/90 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] p-4 flex items-center justify-between gap-6 px-10">
                         <div className="flex items-center gap-4">
@@ -749,11 +892,11 @@ export const AdmissionForm = () => {
                         </div>
 
                         <div className="flex items-center gap-6">
-                            {currentStep === 5 && (
+                            {/* {currentStep === 5 && (
                                 <Button variant="ghost" size="lg" className="hidden md:flex rounded-2xl px-10 h-16 font-black italic tracking-widest text-slate-400 hover:text-white border border-white/5" onClick={() => { setIsSubmitted(true); setReferenceId('PREVIEW-MODE'); }}>
                                     <Eye className="mr-3" size={24} /> PREVIEW
                                 </Button>
-                            )}
+                            )} */}
                             <Button
                                 size="lg"
                                 className={cn(
@@ -774,7 +917,7 @@ export const AdmissionForm = () => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };

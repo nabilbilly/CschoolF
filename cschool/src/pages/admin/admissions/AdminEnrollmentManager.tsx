@@ -58,7 +58,7 @@ const AdminEnrollmentManager: React.FC = () => {
                 setClasses(classList);
 
                 // Set default academic year if any
-                const activeYear = years.find(y => y.status === 'Active');
+                const activeYear = years.find(y => y.status === 'ACTIVE');
                 if (activeYear) {
                     setFilters(prev => ({ ...prev, academic_year_id: activeYear.id }));
                 }

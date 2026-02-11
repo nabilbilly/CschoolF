@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { StudentSidebar } from '../../components/student/StudentSidebar';
+import { authService } from '../../services/authService';
 
 export const StudentLayout = () => {
+    const session = authService.getSession();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    if (!session.token) {
+        return <Navigate to="/student/login" replace />;
+    }
 
     return (
         <div className="min-h-screen bg-slate-100 font-sans">

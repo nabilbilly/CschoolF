@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
     CheckCircle2, XCircle, ChevronRight, User, Users,
-    School, Activity, Key, Loader2, Printer
+    School, Activity, Key, Loader2, Printer, X
 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { cn } from '../../../lib/utils';
 import { evoucherService } from '../../../services/evoucherService';
-import type { ClassRoom, Term } from '../../../services/academicsService';
+import type { ClassRoom, Term, AcademicYear } from '../../../services/academicsService';
 import { academicsService } from '../../../services/academicsService';
 import { admissionsService } from '../../../services/admissionsService';
 import { LimitedInput } from '../../../components/common/LimitedInput';
@@ -30,9 +30,13 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
     const [voucherCode, setVoucherCode] = useState('');
     const [voucherPin, setVoucherPin] = useState('');
     const [voucherError, setVoucherError] = useState('');
+    const [generalError, setGeneralError] = useState<string | null>(null);
     const [voucherSessionToken, setVoucherSessionToken] = useState<string | null>(null);
+    const [showDraftPrompt, setShowDraftPrompt] = useState(false);
+    const [pendingDraftData, setPendingDraftData] = useState<any>(null);
 
     // Meta Data State
+    const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [classes, setClasses] = useState<ClassRoom[]>([]);
     const [terms, setTerms] = useState<Term[]>([]);
 
@@ -89,8 +93,9 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         academicsService.getClasses()
                     ]);
 
+                    setAcademicYears(years);
                     setClasses(classList);
-                    const active = years.find(y => y.status === 'Active');
+                    const active = years.find(y => y.status === 'ACTIVE');
                     if (active) {
                         setFormData(prev => ({
                             ...prev,
@@ -99,17 +104,28 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         }));
 
                         const termList = await academicsService.getTerms(active.id);
-                        const filteredTerms = termList.filter(t => t.status !== 'Draft');
+                        const filteredTerms = termList.filter(t => t.status !== 'DRAFT');
                         setTerms(filteredTerms);
 
                         if (filteredTerms.length > 0) {
+                            const activeTerm = filteredTerms.find(t => t.status === 'ACTIVE') || filteredTerms[0];
                             setFormData(prev => ({
                                 ...prev,
-                                termId: filteredTerms[0].id,
-                                termName: filteredTerms[0].name
+                                termId: activeTerm.id,
+                                termName: activeTerm.name
                             }));
                         }
                     }
+
+                    // Reset voucher states when modal opens
+                    setVoucherCode('');
+                    setVoucherPin('');
+                    setVoucherError('');
+                    setVoucherSessionToken(null);
+                    setShowDraftPrompt(false);
+                    setPendingDraftData(null);
+                    setCurrentStep('voucher');
+
                 } catch (err) {
                     console.error('Failed to fetch metadata:', err);
                 }
@@ -117,6 +133,24 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
             initMeta();
         }
     }, [isOpen]);
+
+    // Save Draft Effect
+    useEffect(() => {
+        if (!isOpen || !voucherCode || currentStep === 'success') return;
+
+        const saveDraft = () => {
+            const draftData = {
+                formData,
+                currentStep,
+                activeSection,
+                updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(`admin_admission_draft_${voucherCode}`, JSON.stringify(draftData));
+        };
+
+        const timeoutId = setTimeout(saveDraft, 500);
+        return () => clearTimeout(timeoutId);
+    }, [formData, currentStep, activeSection, isOpen, voucherCode]);
 
     // --- Logic ---
 
@@ -129,19 +163,57 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                 voucher_number: voucherCode.trim(),
                 pin: voucherPin.trim()
             });
-
             if (response.valid) {
                 // If valid, move to the next step
-                setVoucherSessionToken(response.voucher_session_token || null);
+                const token = response.voucher_session_token || null;
+                setVoucherSessionToken(token);
+                if (token) {
+                    sessionStorage.setItem(`admin_session_${voucherCode}`, token);
+                    sessionStorage.setItem('last_admin_admission_voucher', voucherCode);
+                }
+
+                // Sync Academic Year from voucher
+                if (response.academic_year_id) {
+                    const voucherYear = academicYears.find(y => y.id === response.academic_year_id);
+                    if (voucherYear) {
+                        setFormData(prev => ({
+                            ...prev,
+                            academicYearId: voucherYear.id,
+                            academicYearName: voucherYear.name
+                        }));
+                        // Fetch terms for this specific year
+                        const yearTerms = await academicsService.getTerms(voucherYear.id);
+                        setTerms(yearTerms);
+
+                        // Default to active term if available
+                        const activeTerm = yearTerms.find(t => t.status === 'ACTIVE');
+                        if (activeTerm) {
+                            setFormData(prev => ({ ...prev, termId: activeTerm.id, termName: activeTerm.name }));
+                        }
+                    }
+                }
+
+                // Check for draft
+                const savedDraft = localStorage.getItem(`admin_admission_draft_${voucherCode}`);
+                if (savedDraft) {
+                    try {
+                        const parsed = JSON.parse(savedDraft);
+                        if (parsed.formData) {
+                            setPendingDraftData(parsed);
+                            setShowDraftPrompt(true);
+                            return; // Stop here and show prompt
+                        }
+                    } catch (e) { }
+                }
+
                 setCurrentStep('form');
             } else {
-                // Map backend reasons to friendly messages
                 const reasons: Record<string, string> = {
-                    'InvalidPIN': 'The PIN you entered is incorrect.',
-                    'NotFound': 'Voucher number not found. Please check and try again.',
-                    'Expired': 'This voucher has expired.',
-                    'Used': 'This voucher has already been used.',
-                    'Reserved': 'This voucher is currently in use by another session.'
+                    'NOT_FOUND': 'Voucher not found. Please check the serial number.',
+                    'EXPIRED': 'This voucher has expired.',
+                    'USED': 'This voucher has already been used.',
+                    'RESERVED': 'This voucher is currently in use in another session. Please try re-verifying to resume.',
+                    'INVALID_PIN': 'The PIN you entered is incorrect.'
                 };
                 setVoucherError(reasons[response.reason || ''] || 'Verification failed. Please try again.');
             }
@@ -150,6 +222,26 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleRestoreDraft = () => {
+        if (pendingDraftData) {
+            setFormData(prev => ({ ...prev, ...pendingDraftData.formData }));
+            if (pendingDraftData.activeSection) setActiveSection(pendingDraftData.activeSection);
+
+            // Ensure we move to 'form' step even if draft was saved at 'voucher' step
+            const targetStep = pendingDraftData.currentStep === 'voucher' ? 'form' : (pendingDraftData.currentStep || 'form');
+            setCurrentStep(targetStep);
+        }
+        setShowDraftPrompt(false);
+        setPendingDraftData(null);
+    };
+
+    const handleStartFresh = () => {
+        localStorage.removeItem(`admin_admission_draft_${voucherCode}`);
+        setShowDraftPrompt(false);
+        setPendingDraftData(null);
+        setCurrentStep('form');
     };
 
     const validateSection = (section: FormSection | 'all'): boolean => {
@@ -167,6 +259,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
             if (!formData.guardianName.trim()) errors.guardianName = 'Guardian name is required';
             if (!formData.guardianRelation.trim()) errors.guardianRelation = 'Relationship is required';
             if (!formData.guardianPhone.trim()) errors.guardianPhone = 'Phone number is required';
+            if (formData.guardianEmail && !formData.guardianEmail.includes('@')) errors.guardianEmail = 'Invalid email address';
             if (!formData.guardianAddress.trim()) errors.guardianAddress = 'Address is required';
         }
 
@@ -176,17 +269,24 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
         }
 
         setFormErrors(errors);
+        if (Object.keys(errors).length > 0) {
+            setGeneralError('Please correct the highlighted fields before proceeding.');
+        } else {
+            setGeneralError(null);
+        }
         return Object.keys(errors).length === 0;
     };
 
     const handleNextSection = (next: FormSection) => {
         if (validateSection(activeSection)) {
             setActiveSection(next);
+            setGeneralError(null);
         }
     };
 
     const handleGenerateAccount = async () => {
         if (!validateSection('all')) {
+            setGeneralError('Required information is missing in one or more sections. Please review and complete the form.');
             // Jump to first section with errors
             if (!formData.firstName || !formData.lastName || !formData.gender || !formData.dob || !formData.nationality) setActiveSection('bio');
             else if (!formData.guardianName || !formData.guardianRelation || !formData.guardianPhone || !formData.guardianAddress) setActiveSection('guardian');
@@ -304,8 +404,17 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
 
             if (status === 'Active') {
                 setCurrentStep('success');
+                // Clear draft on success
+                localStorage.removeItem(`admin_admission_draft_${voucherCode}`);
+                sessionStorage.removeItem(`admin_session_${voucherCode}`);
+                sessionStorage.removeItem('last_admin_admission_voucher');
             } else {
                 onClose();
+                // If it was just saved as pending, maybe clear but let's keep it until finalized?
+                // Actually, for admin flow, if they move to 'Pending Approval', it's registered.
+                localStorage.removeItem(`admin_admission_draft_${voucherCode}`);
+                sessionStorage.removeItem(`admin_session_${voucherCode}`);
+                sessionStorage.removeItem('last_admin_admission_voucher');
             }
         } catch (err: any) {
             alert(`Action failed: ${err.message}`);
@@ -329,43 +438,68 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
             </div>
 
             <div className="max-w-sm mx-auto space-y-4 bg-slate-50 p-6 rounded-xl border border-slate-200">
-                {voucherError && (
-                    <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2 mb-4 text-left">
-                        <XCircle size={16} className="shrink-0" />
-                        {voucherError}
+                {showDraftPrompt ? (
+                    <div className="text-center space-y-4 py-2">
+                        <div className="bg-primary-50 p-4 rounded-lg text-primary-700 text-sm font-medium border border-primary-100 italic">
+                            An unfinished draft was found for this voucher. How would you like to proceed?
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button
+                                variant="outline"
+                                className="w-full bg-white border-slate-200"
+                                onClick={handleStartFresh}
+                            >
+                                Start Fresh
+                            </Button>
+                            <Button
+                                className="w-full"
+                                onClick={handleRestoreDraft}
+                            >
+                                Restore Draft
+                            </Button>
+                        </div>
                     </div>
-                )}
+                ) : (
+                    <>
+                        {voucherError && (
+                            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2 mb-4 text-left">
+                                <XCircle size={16} className="shrink-0" />
+                                {voucherError}
+                            </div>
+                        )}
 
-                <div className="space-y-1 text-left">
-                    <label className="text-xs font-bold text-slate-700 uppercase">Voucher Serial Number</label>
-                    <input
-                        type="text"
-                        placeholder="e.g. 12345678"
-                        className="w-full text-center tracking-widest font-mono text-lg border-slate-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 uppercase"
-                        value={voucherCode}
-                        onChange={(e) => setVoucherCode(e.target.value)}
-                    />
-                </div>
-                <div className="space-y-1 text-left">
-                    <label className="text-xs font-bold text-slate-700 uppercase">PIN Code</label>
-                    <input
-                        type="password"
-                        placeholder="•••••••"
-                        className="w-full text-center tracking-widest font-mono text-lg border-slate-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                        maxLength={7}
-                        value={voucherPin}
-                        onChange={(e) => setVoucherPin(e.target.value)}
-                    />
-                </div>
-                <Button
-                    className="w-full mt-4"
-                    size="lg"
-                    onClick={handleVerifyVoucher}
-                    disabled={!voucherCode || !voucherPin || isLoading}
-                >
-                    {isLoading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" size={18} />}
-                    Verify & Continue
-                </Button>
+                        <div className="space-y-1 text-left">
+                            <label className="text-xs font-bold text-slate-700 uppercase">Voucher Serial Number</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. 12345678"
+                                className="w-full text-center tracking-widest font-mono text-lg border-slate-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 uppercase"
+                                value={voucherCode}
+                                onChange={(e) => setVoucherCode(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1 text-left">
+                            <label className="text-xs font-bold text-slate-700 uppercase">PIN Code</label>
+                            <input
+                                type="password"
+                                placeholder="•••••••"
+                                className="w-full text-center tracking-widest font-mono text-lg border-slate-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                                maxLength={7}
+                                value={voucherPin}
+                                onChange={(e) => setVoucherPin(e.target.value)}
+                            />
+                        </div>
+                        <Button
+                            className="w-full mt-4"
+                            size="lg"
+                            onClick={handleVerifyVoucher}
+                            disabled={!voucherCode || !voucherPin || isLoading}
+                        >
+                            {isLoading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" size={18} />}
+                            Verify & Continue
+                        </Button>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -398,6 +532,19 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                     </button>
                 ))}
             </div>
+
+            {generalError && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <XCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-red-800">Form Validation Error</p>
+                        <p className="text-xs text-red-600 mt-1">{generalError}</p>
+                    </div>
+                    <button onClick={() => setGeneralError(null)} className="text-red-400 hover:text-red-600 transition-colors">
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
 
             <div className="flex-1 overflow-y-auto pr-2">
                 {activeSection === 'bio' && (
@@ -444,7 +591,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                             <label className="block text-sm font-medium text-slate-700 mb-1">Gender <span className="text-red-500">*</span></label>
                             <select
                                 className={cn(
-                                    "w-full border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500",
+                                    "w-full border-2 border-slate-200 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-slate-50",
                                     formErrors.gender && "border-red-500 focus:ring-red-500 focus:border-red-500"
                                 )}
                                 value={formData.gender} onChange={e => {
@@ -463,7 +610,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                             <input
                                 type="date"
                                 className={cn(
-                                    "w-full border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500",
+                                    "w-full border-2 border-slate-200 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-slate-50",
                                     formErrors.dob && "border-red-500 focus:ring-red-500 focus:border-red-500"
                                 )}
                                 value={formData.dob} onChange={e => {
@@ -513,7 +660,10 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                 {activeSection === 'guardian' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="col-span-1 md:col-span-2">
-                            <h4 className="font-bold text-slate-800 mb-3 border-b pb-2">Parent / Guardian Information</h4>
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h4 className="font-bold text-slate-800">Parent / Guardian Information</h4>
+                                <Button variant="ghost" size="sm" onClick={() => { setActiveSection('bio'); setGeneralError(null); }}>Back to Bio</Button>
+                            </div>
                         </div>
                         <div className="col-span-1 md:col-span-2">
                             <LimitedInput
@@ -532,7 +682,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                             <label className="block text-sm font-medium text-slate-700 mb-1">Relationship <span className="text-red-500">*</span></label>
                             <select
                                 className={cn(
-                                    "w-full border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500",
+                                    "w-full border-2 border-slate-200 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-slate-50",
                                     formErrors.guardianRelation && "border-red-500 focus:ring-red-500 focus:border-red-500"
                                 )}
                                 value={formData.guardianRelation} onChange={e => {
@@ -556,7 +706,8 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                                     setFormData({ ...formData, guardianPhone: val });
                                     if (formErrors.guardianPhone) setFormErrors({ ...formErrors, guardianPhone: '' });
                                 }}
-                                maxLength={15}
+                                maxLength={11}
+                                numericOnly
                                 error={formErrors.guardianPhone}
                                 placeholder="0XXXX XXXXXX"
                             />
@@ -566,8 +717,19 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                                 label="Secondary Phone (Optional)"
                                 value={formData.guardianSecondaryPhone}
                                 onChange={val => setFormData({ ...formData, guardianSecondaryPhone: val })}
-                                maxLength={15}
+                                maxLength={11}
+                                numericOnly
                                 placeholder="Optional"
+                            />
+                        </div>
+                        <div className="col-span-1 md:col-span-2">
+                            <LimitedInput
+                                label="Email Address"
+                                value={formData.guardianEmail}
+                                onChange={val => setFormData({ ...formData, guardianEmail: val })}
+                                maxLength={100}
+                                error={formErrors.guardianEmail}
+                                placeholder="example@domain.com"
                             />
                         </div>
                         <div className="col-span-1 md:col-span-2">
@@ -609,7 +771,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                             <label className="block text-sm font-medium text-slate-700 mb-1">Admission Class <span className="text-red-500">*</span></label>
                             <select
                                 className={cn(
-                                    "w-full border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500",
+                                    "w-full border-2 border-slate-200 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-slate-50",
                                     formErrors.admissionClassId && "border-red-500 focus:ring-red-500 focus:border-red-500"
                                 )}
                                 value={formData.admissionClassId} onChange={e => {
@@ -627,7 +789,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Stream (Optional)</label>
                             <select
-                                className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                className="w-full border-2 border-slate-200 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-slate-50"
                                 value={formData.streamId || 0} onChange={e => setFormData({ ...formData, streamId: parseInt(e.target.value) || null })}
                             >
                                 <option value={0}>Select Stream</option>
@@ -639,7 +801,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Academic Year</label>
                             <input
-                                type="text" className="w-full border-slate-300 rounded-lg shadow-sm bg-slate-50 text-slate-500 focus:ring-primary-500 focus:border-primary-500"
+                                type="text" className="w-full border-2 border-slate-200 rounded-lg shadow-sm bg-slate-50 text-slate-500 focus:ring-primary-500 focus:border-primary-500"
                                 value={formData.academicYearName} readOnly
                             />
                         </div>
@@ -647,7 +809,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                             <label className="block text-sm font-medium text-slate-700 mb-1">Entry Term <span className="text-red-500">*</span></label>
                             <select
                                 className={cn(
-                                    "w-full border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500",
+                                    "w-full border-2 border-slate-200 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-slate-50",
                                     formErrors.termId && "border-red-500 focus:ring-red-500 focus:border-red-500"
                                 )}
                                 value={formData.termId} onChange={e => {
@@ -663,7 +825,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                             {formErrors.termId && <p className="mt-1 text-xs text-red-500">{formErrors.termId}</p>}
                         </div>
                         <div className="col-span-1 md:col-span-2 flex justify-between mt-4">
-                            <Button variant="ghost" onClick={() => setActiveSection('guardian')}>Back</Button>
+                            <Button variant="ghost" onClick={() => { setActiveSection('guardian'); setGeneralError(null); }}>Back</Button>
                             <Button onClick={() => handleNextSection('medical')}>Next: Medical <ChevronRight size={16} /></Button>
                         </div>
                     </div>
@@ -703,7 +865,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         </div>
 
                         <div className="col-span-1 flex justify-between mt-8 border-t pt-4">
-                            <Button variant="ghost" onClick={() => setActiveSection('academic')}>Back</Button>
+                            <Button variant="ghost" onClick={() => { setActiveSection('academic'); setGeneralError(null); }}>Back</Button>
                             <Button
                                 className="bg-green-600 hover:bg-green-700"
                                 onClick={handleGenerateAccount}

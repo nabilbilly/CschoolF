@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { School, ArrowRight, AlertCircle, CheckCircle2, Ticket, Phone } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -13,10 +13,24 @@ export const AdmissionVerification = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    const [activeYearName, setActiveYearName] = useState('...');
     const [formData, setFormData] = useState({
         voucherNumber: '',
         pin: ''
     });
+
+    useEffect(() => {
+        const fetchYear = async () => {
+            try {
+                const years = await evoucherService.getAcademicYears();
+                const active = years.find(y => y.status === 'ACTIVE');
+                if (active) setActiveYearName(active.name);
+            } catch (err) {
+                console.error('Failed to fetch academic year:', err);
+            }
+        };
+        fetchYear();
+    }, []);
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,16 +47,19 @@ export const AdmissionVerification = () => {
             if (response.valid && response.voucher_session_token) {
                 setSuccess('Voucher verified successfully! Redirecting...');
                 sessionStorage.setItem('admission_voucher_token', response.voucher_session_token);
+                if (response.voucher_number) {
+                    sessionStorage.setItem('admission_voucher_number', response.voucher_number);
+                }
                 setTimeout(() => {
                     navigate('/admission/form');
                 }, 1500);
             } else {
                 const reasons: Record<string, string> = {
-                    'InvalidPIN': 'The PIN you entered is incorrect.',
-                    'NotFound': 'Voucher number not found. Please check and try again.',
-                    'Expired': 'This voucher has expired.',
-                    'Used': 'This voucher has already been used.',
-                    'Reserved': 'This voucher is currently in use by another session.'
+                    'INVALID_PIN': 'The PIN you entered is incorrect.',
+                    'NOT_FOUND': 'Voucher number not found. Please check and try again.',
+                    'EXPIRED': 'This voucher has expired.',
+                    'USED': 'This voucher has already been used.',
+                    'RESERVED': 'This voucher is currently in use in another session. Please try re-verifying to resume.'
                 };
                 setError(reasons[response.reason || ''] || 'Verification failed. Please try again.');
                 setIsLoading(false);
@@ -57,15 +74,15 @@ export const AdmissionVerification = () => {
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center">
-                    <div className="p-3 bg-primary-600 rounded-xl text-white shadow-lg">
+                    <Link to="/student/login" className="p-3 bg-primary-600 rounded-xl text-white shadow-lg hover:bg-primary-700 transition-colors transform hover:scale-105">
                         <School size={40} />
-                    </div>
+                    </Link>
                 </div>
                 <h2 className="mt-2 text-center text-3xl font-extrabold text-slate-900">
                     Admission e-Voucher
                 </h2>
                 <p className=" text-center text-sm text-slate-600">
-                    cschool &bull; 2025/2026 Academic Year
+                    cschool &bull; {activeYearName} Academic Year
                 </p>
             </div>
 

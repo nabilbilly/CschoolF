@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { studentsService, type StudentResponse } from '../../services/studentsService';
+import { mediaService } from '../../services/mediaService';
+import { MEDIA_BASE_URL } from '../../services/api';
 import {
     Loader2,
     AlertCircle,
@@ -11,12 +13,16 @@ import {
     UserCheck,
     HeartPulse,
     Activity,
-    School
+    School,
+    Camera,
+    CameraOff
 } from 'lucide-react';
+import { StudentAvatar } from '../../components/common/StudentAvatar';
 
 export const StudentProfile = () => {
     const [profile, setProfile] = useState<StudentResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -36,6 +42,37 @@ export const StudentProfile = () => {
 
         fetchProfile();
     }, []);
+
+    const handlePhotoUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Basic validation (1MB limit)
+        if (file.size > 1 * 1024 * 1024) {
+            alert('Image size must be 1MB or less');
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            // 1. Upload the image
+            const uploadRes = await mediaService.uploadImage(file);
+
+            // 2. Update the student profile
+            const updatedProfile = await studentsService.updateProfile({ photo: uploadRes.url });
+
+            // 3. Update local state
+            setProfile(updatedProfile);
+
+            // Optional: toast success
+        } catch (err: any) {
+            console.error("Failed to update photo:", err);
+            alert(err.message || 'Failed to update photo');
+        } finally {
+            setIsUpdating(false);
+            if (e.target) e.target.value = '';
+        }
+    };
 
     if (loading) {
         return (
@@ -79,14 +116,24 @@ export const StudentProfile = () => {
                 <div className="lg:col-span-4 space-y-6">
                     {/* Photo Card */}
                     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-center">
-                        <div className="relative inline-block mb-4 group">
-                            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-100 shadow-inner mx-auto bg-slate-50">
-                                <img
-                                    src={profile.photo || "https://images.unsplash.com/photo-1544531586-fde5298cdd40?q=80&w=300&auto=format&fit=crop"}
-                                    alt="Profile"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
+                        <div className="relative inline-block mb-4">
+                            <StudentAvatar
+                                firstName={profile.first_name}
+                                lastName={profile.last_name}
+                                photo={profile.photo}
+                                size="2xl"
+                                isUpdating={isUpdating}
+                                showCameraOverlay={true}
+                                onClick={() => !isUpdating && document.getElementById('profile-photo-upload')?.click()}
+                            />
+                            <input
+                                id="profile-photo-upload"
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handlePhotoUpdate}
+                                disabled={isUpdating}
+                            />
                             <div className="absolute bottom-1 right-1 bg-green-500 w-5 h-5 rounded-full border-2 border-white"></div>
                         </div>
                         <h3 className="text-xl font-bold text-slate-900">{profile.first_name} {profile.last_name}</h3>

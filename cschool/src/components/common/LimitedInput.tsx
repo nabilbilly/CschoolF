@@ -16,6 +16,7 @@ interface LimitedInputProps {
     textarea?: boolean;
     rows?: number;
     icon?: React.ReactNode;
+    numericOnly?: boolean;
 }
 
 export const LimitedInput: React.FC<LimitedInputProps> = ({
@@ -30,12 +31,17 @@ export const LimitedInput: React.FC<LimitedInputProps> = ({
     className = '',
     textarea = false,
     rows = 3,
-    icon
+    icon,
+    numericOnly = false
 }) => {
     const remaining = maxLength - value.length;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        onChange(e.target.value);
+        let val = e.target.value;
+        if (numericOnly) {
+            val = val.replace(/[^0-9]/g, '');
+        }
+        onChange(val);
     };
 
     return (
@@ -74,7 +80,7 @@ export const LimitedInput: React.FC<LimitedInputProps> = ({
                         disabled={disabled}
                         rows={rows}
                         className={cn(
-                            "w-full bg-slate-50 border-2 border-transparent rounded-[1.25rem] px-8 py-5 outline-none transition-all font-bold italic resize-none",
+                            "w-full bg-slate-50 border-2 border-slate-200 rounded-[1.25rem] px-8 py-5 outline-none transition-all font-bold italic resize-none",
                             "focus:bg-white",
                             icon && "pl-14",
                             error || remaining < 0 ? "border-rose-300 bg-rose-50/30 focus:border-rose-500" : "focus:border-primary-600",
@@ -89,7 +95,7 @@ export const LimitedInput: React.FC<LimitedInputProps> = ({
                         placeholder={placeholder}
                         disabled={disabled}
                         className={cn(
-                            "w-full h-16 bg-slate-50 border-2 border-transparent rounded-[1.25rem] px-8 outline-none transition-all font-bold italic",
+                            "w-full h-16 bg-slate-50 border-2 border-slate-200 rounded-[1.25rem] px-8 outline-none transition-all font-bold italic",
                             "focus:bg-white",
                             icon && "pl-14",
                             error || remaining < 0 ? "border-rose-300 bg-rose-50/30 focus:border-rose-500" : "focus:border-primary-600",

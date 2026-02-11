@@ -14,16 +14,11 @@ export const AdminAcademicYears = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Draft' | 'Archived'>('All');
+    const [statusFilter, setStatusFilter] = useState<'All' | 'ACTIVE' | 'DRAFT' | 'ARCHIVED'>('All');
     const [showModal, setShowModal] = useState(false);
     const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
-    const [showActivationAlert, setShowActivationAlert] = useState<{ show: boolean, year: AcademicYear | null, currentActive: AcademicYear | null }>({
-        show: false,
-        year: null,
-        currentActive: null
-    });
 
-    const activeYear = years.find(y => y.status === 'Active');
+    const activeYear = years.find(y => y.status === 'ACTIVE');
 
     const fetchYears = async () => {
         setIsLoading(true);
@@ -54,12 +49,13 @@ export const AdminAcademicYears = () => {
         }
 
         if (activeYear && activeYear.id !== year.id) {
-            setShowActivationAlert({ show: true, year, currentActive: activeYear });
-            return;
+            if (!window.confirm(`Year ${activeYear.name} is currently Active. Activating ${year.name} will automatically ARCHIVE the current year. Do you want to proceed with the rollover?`)) {
+                return;
+            }
         }
 
         try {
-            await academicsService.updateAcademicYear(year.id, { status: 'Active' });
+            await academicsService.updateAcademicYear(year.id, { status: 'ACTIVE' });
             await fetchYears();
         } catch (err: any) {
             setError(err.message);
@@ -70,7 +66,7 @@ export const AdminAcademicYears = () => {
         if (!window.confirm(`Are you sure you want to archive ${year.name}? This will close the current academic session.`)) return;
 
         try {
-            await academicsService.updateAcademicYear(year.id, { status: 'Archived' });
+            await academicsService.updateAcademicYear(year.id, { status: 'ARCHIVED' });
             await fetchYears();
         } catch (err: any) {
             setError(err.message);
@@ -96,9 +92,9 @@ export const AdminAcademicYears = () => {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'Active': return 'bg-green-100 text-green-700 border-green-200';
-            case 'Archived': return 'bg-slate-100 text-slate-600 border-slate-200';
-            case 'Draft': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            case 'ACTIVE': return 'bg-green-100 text-green-700 border-green-200';
+            case 'ARCHIVED': return 'bg-slate-100 text-slate-600 border-slate-200';
+            case 'DRAFT': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             default: return 'bg-slate-100 text-slate-600';
         }
     };
@@ -112,7 +108,7 @@ export const AdminAcademicYears = () => {
                         {activeYear ? (
                             <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100">
                                 <CheckCircle2 size={12} />
-                                {activeYear.name} is Active
+                                {activeYear.name} is ACTIVE
                             </span>
                         ) : (
                             <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-100">
@@ -192,9 +188,9 @@ export const AdminAcademicYears = () => {
                         onChange={(e) => setStatusFilter(e.target.value as any)}
                     >
                         <option value="All">All Statuses</option>
-                        <option value="Active">Active</option>
-                        <option value="Draft">Draft</option>
-                        <option value="Archived">Archived</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="DRAFT">Draft</option>
+                        <option value="ARCHIVED">Archived</option>
                     </select>
                 </div>
             </div>
@@ -231,7 +227,7 @@ export const AdminAcademicYears = () => {
                                         key={year.id}
                                         className={cn(
                                             "hover:bg-slate-50/50 transition-colors group",
-                                            year.status === 'Active' && "bg-green-50/30 ring-1 ring-inset ring-green-100"
+                                            year.status === 'ACTIVE' && "bg-green-50/30 ring-1 ring-inset ring-green-100"
                                         )}
                                     >
                                         <td className="px-6 py-4">
@@ -267,9 +263,9 @@ export const AdminAcademicYears = () => {
 
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
-                                            {year.status !== 'Archived' && (
+                                            {year.status !== 'ARCHIVED' && (
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {year.status === 'Draft' && (
+                                                    {year.status === 'DRAFT' && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
@@ -279,7 +275,7 @@ export const AdminAcademicYears = () => {
                                                             Activate
                                                         </Button>
                                                     )}
-                                                    {year.status === 'Active' && (
+                                                    {year.status === 'ACTIVE' && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
@@ -318,37 +314,7 @@ export const AdminAcademicYears = () => {
                 </div>
             </div>
 
-            {/* Activation Alert Modal/Toast logic could go here */}
-            {showActivationAlert.show && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <motion.div
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6"
-                    >
-                        <div className="flex items-center gap-3 text-amber-600 mb-4">
-                            <AlertCircle size={28} />
-                            <h3 className="text-xl font-bold">Action Required</h3>
-                        </div>
-                        <p className="text-slate-600 mb-6">
-                            Year <span className="font-bold text-slate-900">{showActivationAlert.currentActive?.name}</span> is currently Active.
-                            You must Archive it before activating <span className="font-bold text-slate-900">{showActivationAlert.year?.name}</span>.
-                        </p>
-                        <div className="flex gap-3">
-                            <Button className="flex-1" variant="outline" onClick={() => setShowActivationAlert({ show: false, year: null, currentActive: null })}>
-                                Dismiss
-                            </Button>
-                            <Button className="flex-1 bg-slate-800 hover:bg-slate-900" onClick={() => {
-                                setEditingYear(showActivationAlert.currentActive);
-                                setShowModal(true);
-                                setShowActivationAlert({ show: false, year: null, currentActive: null });
-                            }}>
-                                Go to {showActivationAlert.currentActive?.name}
-                            </Button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+            {/* Removed blocking Activation Alert modal as rollover is now automatic with confirmation */}
 
             <CreateAcademicYearModal
                 isOpen={showModal}

@@ -3,7 +3,7 @@ import { fetchApi } from './api';
 export interface AcademicYear {
     id: number;
     name: string;
-    status: 'Active' | 'Draft' | 'Archived';
+    status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
 }
 
 export interface EVoucher {
@@ -59,6 +59,7 @@ export const evoucherService = {
     verifyVoucher: (data: { voucher_number: string, pin: string }) =>
         fetchApi<{
             valid: boolean,
+            voucher_number?: string,
             voucher_session_token?: string,
             reason?: string,
             expires_at?: string,
@@ -71,6 +72,7 @@ export const evoucherService = {
     checkSession: (sessionToken: string) =>
         fetchApi<{
             valid: boolean,
+            voucher_number?: string,
             reason?: string,
             expires_at?: string,
             academic_year_id?: number
