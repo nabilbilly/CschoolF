@@ -22,7 +22,7 @@ type Student = {
     id: string;
     name: string;
     gender: 'Male' | 'Female';
-    status: 'Active' | 'Pending Exit' | 'Exited';
+    status: 'ACTIVE' | 'PENDING EXIT' | 'EXITED';
     admissionYear: string;
     dob: string;
     guardian: string;
@@ -40,7 +40,7 @@ const generateStudents = (_level: string, className: string): Student[] => {
             'Akosua Konadu', 'Kwadwo Owusu', 'Adwoa Yeboah', 'Kwabena Antwi', 'Akua Sarpong'
         ][i % 10] + ` ${i + 1} `,
         gender: i % 2 === 0 ? 'Male' : 'Female',
-        status: i === 5 ? 'Pending Exit' : i === 12 ? 'Exited' : 'Active',
+        status: i === 5 ? 'PENDING EXIT' : i === 12 ? 'EXITED' : 'ACTIVE',
         admissionYear: '2023',
         dob: '2015-05-12',
         guardian: 'Mr. Mensah',
@@ -80,9 +80,9 @@ export const HeadTeacherClassesManager = () => {
     const stats = useMemo(() => {
         return {
             total: filteredStudents.length,
-            active: filteredStudents.filter(s => s.status === 'Active').length,
-            pending: filteredStudents.filter(s => s.status === 'Pending Exit').length,
-            exited: filteredStudents.filter(s => s.status === 'Exited').length
+            active: filteredStudents.filter(s => s.status === 'ACTIVE').length,
+            pending: filteredStudents.filter(s => s.status === 'PENDING EXIT').length,
+            exited: filteredStudents.filter(s => s.status === 'EXITED').length
         };
     }, [filteredStudents]);
 
@@ -349,7 +349,7 @@ export const HeadTeacherClassesManager = () => {
                                 </div>
 
                                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
-                                    {selectedStudent.status === 'Active' && (
+                                    {selectedStudent.status === 'ACTIVE' && (
                                         <Button onClick={handleDismissRequest} variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300">
                                             <UserX className="mr-2 h-4 w-4" />
                                             Request Dismissal / Exit
@@ -371,15 +371,15 @@ export const HeadTeacherClassesManager = () => {
 
 const StatusBadge = ({ status }: { status: string }) => {
     const styles = {
-        'Active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'Pending Exit': 'bg-amber-50 text-amber-700 border-amber-200',
-        'Exited': 'bg-red-50 text-red-700 border-red-200',
+        'ACTIVE': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        'PENDING EXIT': 'bg-amber-50 text-amber-700 border-amber-200',
+        'EXITED': 'bg-red-50 text-red-700 border-red-200',
     };
 
     const icons = {
-        'Active': UserCheck,
-        'Pending Exit': AlertTriangle,
-        'Exited': UserX,
+        'ACTIVE': UserCheck,
+        'PENDING EXIT': AlertTriangle,
+        'EXITED': UserX,
     };
 
     const Icon = icons[status as keyof typeof icons] || UserCheck;

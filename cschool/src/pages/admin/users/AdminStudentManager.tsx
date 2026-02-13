@@ -728,10 +728,10 @@ const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
 );
 
 const StatusBadge = ({ status, size = 'md' }: { status: StudentStatus, size?: 'sm' | 'md' }) => {
-    const styles = {
-        'Active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'Pending Approval': 'bg-blue-50 text-blue-700 border-blue-200',
-        'Inactive': 'bg-slate-50 text-slate-500 border-slate-200',
+    const styles: Record<string, string> = {
+        'ACTIVE': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        'PENDING APPROVAL': 'bg-blue-50 text-blue-700 border-blue-200',
+        'INACTIVE': 'bg-slate-50 text-slate-500 border-slate-200',
     };
 
     return (
