@@ -127,7 +127,7 @@ export const AdmissionForm = () => {
                 ]);
 
                 setClasses(classList);
-                const currentYear = years.find((y: AcademicYear) => y.id === vRes.academic_year_id) || years.find((y: AcademicYear) => y.status === 'ACTIVE');
+                const currentYear = years.find((y: AcademicYear) => y.id === vRes.academic_year_id) || years.find((y: AcademicYear) => y.status === 'Active');
 
                 if (currentYear) {
                     setActiveYear(currentYear);
@@ -152,7 +152,7 @@ export const AdmissionForm = () => {
                                         academic_year_id: currentYear.id // Force correct year
                                     }));
                                 } else {
-                                    const activeTerm = filteredTerms.find((t: any) => t.status === 'ACTIVE') || (filteredTerms.length > 0 ? filteredTerms[0] : null);
+                                    const activeTerm = filteredTerms.find((t: any) => t.status === 'Active') || (filteredTerms.length > 0 ? filteredTerms[0] : null);
                                     setPlacement(prev => ({
                                         ...prev,
                                         academic_year_id: currentYear.id,
@@ -165,7 +165,7 @@ export const AdmissionForm = () => {
                             }
                         } else {
                             // Default placement if no draft
-                            const activeTerm = filteredTerms.find((t: any) => t.status === 'ACTIVE') || (filteredTerms.length > 0 ? filteredTerms[0] : null);
+                            const activeTerm = filteredTerms.find((t: any) => t.status === 'Active') || (filteredTerms.length > 0 ? filteredTerms[0] : null);
                             setPlacement(prev => ({
                                 ...prev,
                                 academic_year_id: currentYear.id,

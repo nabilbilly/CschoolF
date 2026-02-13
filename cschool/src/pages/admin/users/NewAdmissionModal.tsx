@@ -95,7 +95,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
 
                     setAcademicYears(years);
                     setClasses(classList);
-                    const active = years.find(y => y.status === 'ACTIVE');
+                    const active = years.find(y => y.status === 'Active');
                     if (active) {
                         setFormData(prev => ({
                             ...prev,
@@ -104,11 +104,11 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         }));
 
                         const termList = await academicsService.getTerms(active.id);
-                        const filteredTerms = termList.filter(t => t.status !== 'DRAFT');
+                        const filteredTerms = termList.filter(t => t.status !== 'Draft');
                         setTerms(filteredTerms);
 
                         if (filteredTerms.length > 0) {
-                            const activeTerm = filteredTerms.find(t => t.status === 'ACTIVE') || filteredTerms[0];
+                            const activeTerm = filteredTerms.find(t => t.status === 'Active') || filteredTerms[0];
                             setFormData(prev => ({
                                 ...prev,
                                 termId: activeTerm.id,
@@ -186,7 +186,7 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
                         setTerms(yearTerms);
 
                         // Default to active term if available
-                        const activeTerm = yearTerms.find(t => t.status === 'ACTIVE');
+                        const activeTerm = yearTerms.find(t => t.status === 'Active');
                         if (activeTerm) {
                             setFormData(prev => ({ ...prev, termId: activeTerm.id, termName: activeTerm.name }));
                         }
@@ -345,9 +345,9 @@ export const NewAdmissionModal = ({ isOpen, onClose, onSave }: NewAdmissionModal
             // For now, we'll set the ID and use "Sent to Email/Phone" as placeholder if not returned.
 
             setGeneratedAccount({
-                indexNumber: 'PENDING',
+                indexNumber: 'Pending',
                 username: `std_${response.student_id}`,
-                password: response.temp_password || 'SENT_VIA_SMS'
+                password: response.temp_password || 'Sent via SMS'
             });
 
             // Store the admission ID for approval step

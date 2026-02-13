@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 
 // --- Types & Mock Data ---
 
-type StaffStatus = 'ACTIVE' | 'ON LEAVE' | 'INACTIVE';
+type StaffStatus = 'Active' | 'On Leave' | 'Inactive';
 type StaffRole = 'Bursar' | 'Secretary' | 'Librarian' | 'Security' | 'Cleaner' | 'Driver' | 'Administrator';
 
 interface Staff {
@@ -38,7 +38,7 @@ const mockStaff: Staff[] = Array.from({ length: 15 }).map((_, i) => {
         phone: '0244000000',
         role: role,
         department: ['Accounts', 'Administration', 'Library', 'Security', 'Maintenance', 'Transport', 'Administration'][i % 7],
-        status: i === 2 ? 'ON LEAVE' : i === 8 ? 'INACTIVE' : 'ACTIVE',
+        status: i === 2 ? 'On Leave' : i === 8 ? 'Inactive' : 'Active',
         joinDate: '2021-02-15',
         permissions: role === 'Bursar' ? ['Fees', 'Expenses'] :
             role === 'Secretary' ? ['Admissions', 'Communications'] :
@@ -253,12 +253,12 @@ export const AdminStaffManager = () => {
                                                 </h4>
                                                 <div className="flex gap-3">
                                                     <Button variant="outline" size="sm">Reset Password</Button>
-                                                    {selectedStaff.status === 'ACTIVE' ? (
-                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('INACTIVE')} className="text-red-600 border-red-200 hover:bg-red-50">
+                                                    {selectedStaff.status === 'Active' ? (
+                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('Inactive')} className="text-red-600 border-red-200 hover:bg-red-50">
                                                             Deactivate Account
                                                         </Button>
                                                     ) : (
-                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('ACTIVE')} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('Active')} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
                                                             Activate Account
                                                         </Button>
                                                     )}
@@ -376,9 +376,9 @@ const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
 
 const StatusBadge = ({ status, size = 'md' }: { status: StaffStatus, size?: 'sm' | 'md' }) => {
     const styles = {
-        'ACTIVE': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'ON LEAVE': 'bg-amber-50 text-amber-700 border-amber-200',
-        'INACTIVE': 'bg-slate-100 text-slate-500 border-slate-200',
+        'Active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        'On Leave': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Inactive': 'bg-slate-100 text-slate-500 border-slate-200',
     };
 
     return (

@@ -14,11 +14,11 @@ export const AdminAcademicYears = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'All' | 'ACTIVE' | 'DRAFT' | 'ARCHIVED'>('All');
+    const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Draft' | 'Archived'>('All');
     const [showModal, setShowModal] = useState(false);
     const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
 
-    const activeYear = years.find(y => y.status === 'ACTIVE');
+    const activeYear = years.find(y => y.status === 'Active');
 
     const fetchYears = async () => {
         setIsLoading(true);
@@ -55,7 +55,7 @@ export const AdminAcademicYears = () => {
         }
 
         try {
-            await academicsService.updateAcademicYear(year.id, { status: 'ACTIVE' });
+            await academicsService.updateAcademicYear(year.id, { status: 'Active' });
             await fetchYears();
         } catch (err: any) {
             setError(err.message);
@@ -66,7 +66,7 @@ export const AdminAcademicYears = () => {
         if (!window.confirm(`Are you sure you want to archive ${year.name}? This will close the current academic session.`)) return;
 
         try {
-            await academicsService.updateAcademicYear(year.id, { status: 'ARCHIVED' });
+            await academicsService.updateAcademicYear(year.id, { status: 'Archived' });
             await fetchYears();
         } catch (err: any) {
             setError(err.message);
@@ -92,9 +92,9 @@ export const AdminAcademicYears = () => {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'ACTIVE': return 'bg-green-100 text-green-700 border-green-200';
-            case 'ARCHIVED': return 'bg-slate-100 text-slate-600 border-slate-200';
-            case 'DRAFT': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            case 'Active': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Archived': return 'bg-slate-100 text-slate-600 border-slate-200';
+            case 'Draft': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             default: return 'bg-slate-100 text-slate-600';
         }
     };
@@ -188,9 +188,9 @@ export const AdminAcademicYears = () => {
                         onChange={(e) => setStatusFilter(e.target.value as any)}
                     >
                         <option value="All">All Statuses</option>
-                        <option value="ACTIVE">Active</option>
-                        <option value="DRAFT">Draft</option>
-                        <option value="ARCHIVED">Archived</option>
+                        <option value="Active">Active</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Archived">Archived</option>
                     </select>
                 </div>
             </div>
@@ -227,7 +227,7 @@ export const AdminAcademicYears = () => {
                                         key={year.id}
                                         className={cn(
                                             "hover:bg-slate-50/50 transition-colors group",
-                                            year.status === 'ACTIVE' && "bg-green-50/30 ring-1 ring-inset ring-green-100"
+                                            year.status === 'Active' && "bg-green-50/30 ring-1 ring-inset ring-green-100"
                                         )}
                                     >
                                         <td className="px-6 py-4">
@@ -263,9 +263,9 @@ export const AdminAcademicYears = () => {
 
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
-                                            {year.status !== 'ARCHIVED' && (
+                                            {year.status !== 'Archived' && (
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {year.status === 'DRAFT' && (
+                                                    {year.status === 'Draft' && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
@@ -275,7 +275,7 @@ export const AdminAcademicYears = () => {
                                                             Activate
                                                         </Button>
                                                     )}
-                                                    {year.status === 'ACTIVE' && (
+                                                    {year.status === 'Active' && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"

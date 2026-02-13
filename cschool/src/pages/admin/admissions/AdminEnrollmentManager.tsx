@@ -58,7 +58,7 @@ const AdminEnrollmentManager: React.FC = () => {
                 setClasses(classList);
 
                 // Set default academic year if any
-                const activeYear = years.find(y => y.status === 'ACTIVE');
+                const activeYear = years.find(y => y.status === 'Active');
                 if (activeYear) {
                     setFilters(prev => ({ ...prev, academic_year_id: activeYear.id }));
                 }
@@ -88,7 +88,7 @@ const AdminEnrollmentManager: React.FC = () => {
     };
 
     const handleApprove = async (id: number) => {
-        if (!window.confirm("Are you sure you want to APPROVE this enrollment? This will generate an index number and activate the student account.")) return;
+        if (!window.confirm("Are you sure you want to Approve this enrollment? This will generate an index number and activate the student account.")) return;
 
         try {
             await admissionsService.approveAdmission(id);
@@ -102,7 +102,7 @@ const AdminEnrollmentManager: React.FC = () => {
     };
 
     const handleReject = async (id: number) => {
-        if (!window.confirm("Are you sure you want to REJECT this enrollment? The voucher will be released.")) return;
+        if (!window.confirm("Are you sure you want to Reject this enrollment? The voucher will be released.")) return;
 
         try {
             await admissionsService.rejectAdmission(id);
@@ -116,22 +116,21 @@ const AdminEnrollmentManager: React.FC = () => {
     };
 
     const StatusBadge = ({ status }: { status: string }) => {
-        const normalizedStatus = status?.toUpperCase();
-        switch (normalizedStatus) {
-            case 'APPROVED':
+        switch (status) {
+            case 'Approved':
                 return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
                         <CheckCircle className="w-3 h-3 mr-1" /> Approved
                     </span>
                 );
-            case 'REJECTED':
+            case 'Rejected':
                 return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
                         <XCircle className="w-3 h-3 mr-1" /> Rejected
                     </span>
                 );
+            case 'Pending':
             default:
-                // Pending is default, covers 'PENDING', 'Pending', or null
                 return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                         <Clock className="w-3 h-3 mr-1" /> Pending
@@ -290,9 +289,9 @@ const AdminEnrollmentManager: React.FC = () => {
                                             <div className="text-xs text-slate-500">ID: ADM-{admission.id.toString().padStart(4, '0')}</div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            {(admission.status === 'Approved' || admission.status === 'APPROVED') ? (
+                                            {admission.status === 'Approved' ? (
                                                 <div className="font-mono text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded inline-block">
-                                                    {admission.student_index_number || 'PENDING'}
+                                                    {admission.student_index_number || 'Pending'}
                                                 </div>
                                             ) : (
                                                 <span className="text-slate-300 text-xs italic">N/A</span>
@@ -325,7 +324,7 @@ const AdminEnrollmentManager: React.FC = () => {
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </button>
-                                                {(admission.status === 'Pending' || admission.status === 'PENDING') && (
+                                                {admission.status === 'Pending' && (
                                                     <>
                                                         <button
                                                             onClick={() => handleApprove(admission.id)}
@@ -343,7 +342,7 @@ const AdminEnrollmentManager: React.FC = () => {
                                                         </button>
                                                     </>
                                                 )}
-                                                {(admission.status === 'Rejected' || admission.status === 'REJECTED') && (
+                                                {admission.status === 'Rejected' && (
                                                     <button
                                                         onClick={() => {
                                                             if (window.confirm("Do you want to reconsider and APPROVE this previously rejected admission?")) {
@@ -404,7 +403,7 @@ const AdminEnrollmentManager: React.FC = () => {
                         {selectedAdmission ? (
                             <>
                                 { /* Quick Actions for Pending */}
-                                {(selectedAdmission.status === 'Pending' || selectedAdmission.status === 'PENDING') && (
+                                {(selectedAdmission.status === 'Pending') && (
                                     <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3 text-indigo-700">
                                             <AlertCircle className="w-5 h-5" />
@@ -428,7 +427,7 @@ const AdminEnrollmentManager: React.FC = () => {
                                 )}
 
                                 {/* Quick Actions for Rejected (Re-Approve) */}
-                                {(selectedAdmission.status === 'Rejected' || selectedAdmission.status === 'REJECTED') && (
+                                {(selectedAdmission.status === 'Rejected') && (
                                     <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3 text-rose-700">
                                             <XCircle className="w-5 h-5" />
@@ -462,11 +461,11 @@ const AdminEnrollmentManager: React.FC = () => {
                                             <label className="text-xs text-slate-400 uppercase font-bold">Gender</label>
                                             <p className="text-slate-900 font-medium capitalize">Student Link Needed</p>
                                         </div>
-                                        {(selectedAdmission.status === 'Approved' || selectedAdmission.status === 'APPROVED') && (
+                                        {selectedAdmission.status === 'Approved' && (
                                             <div>
                                                 <label className="text-xs text-slate-400 uppercase font-bold text-indigo-600">Index Number</label>
                                                 <p className="font-mono font-black text-indigo-700 bg-indigo-50 px-2 rounded w-fit">
-                                                    {selectedAdmission.student_index_number || 'GENERATING...'}
+                                                    {selectedAdmission.student_index_number || 'Generating...'}
                                                 </p>
                                             </div>
                                         )}
@@ -480,7 +479,6 @@ const AdminEnrollmentManager: React.FC = () => {
                                         </div>
                                     </div>
                                 </section>
-
                                 {/* Placement Details */}
                                 <section>
                                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
@@ -505,7 +503,6 @@ const AdminEnrollmentManager: React.FC = () => {
                                         </div>
                                     </div>
                                 </section>
-
                                 {/* Audit & Metadata */}
                                 <section>
                                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
@@ -516,7 +513,7 @@ const AdminEnrollmentManager: React.FC = () => {
                                             <span className="text-slate-500">Submission Timestamp</span>
                                             <span className="font-medium text-slate-700">{format(new Date(selectedAdmission.created_at), 'PPpp')}</span>
                                         </div>
-                                        {(selectedAdmission.status === 'Approved' || selectedAdmission.status === 'APPROVED') && (
+                                        {selectedAdmission.status === 'Approved' && (
                                             <>
                                                 <div className="flex justify-between items-center text-sm py-2 border-b border-slate-50">
                                                     <span className="text-slate-500">Approval Timestamp</span>

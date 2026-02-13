@@ -30,7 +30,7 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
     const [name, setName] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [status, setStatus] = useState<YearStatus>('DRAFT');
+    const [status, setStatus] = useState<YearStatus>('Draft');
     const [terms, setTerms] = useState<TermFormData[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -68,12 +68,12 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
                 setName('');
                 setStartDate('');
                 setEndDate('');
-                setStatus('DRAFT');
+                setStatus('Draft');
                 setTerms([{
                     name: 'Term 1',
                     start_date: '',
                     end_date: '',
-                    status: 'DRAFT',
+                    status: 'Draft',
                     sequence: 1,
                     result_open_date: '',
                     result_close_date: '',
@@ -92,7 +92,7 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
             name: `Term ${nextNum}`,
             start_date: '',
             end_date: '',
-            status: 'DRAFT',
+            status: 'Draft',
             sequence: nextNum,
             result_open_date: '',
             result_close_date: '',
@@ -119,7 +119,7 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
         const yearStart = startDate ? new Date(startDate) : null;
         const yearEnd = endDate ? new Date(endDate) : null;
 
-        if (status === 'ACTIVE') {
+        if (status === 'Active') {
             if (!startDate) newErrors.startDate = "Start date required.";
             if (!endDate) newErrors.endDate = "End date required.";
         }
@@ -129,7 +129,7 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
         }
 
         // Count active terms
-        const activeTermCount = terms.filter(t => t.status === 'ACTIVE').length;
+        const activeTermCount = terms.filter(t => t.status === 'Active').length;
         if (activeTermCount > 1) {
             setApiError("You can not set two or more active term or year");
             return false;
@@ -225,8 +225,8 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
 
     const termStatusColor = (status: TermStatus) => {
         switch (status) {
-            case 'ACTIVE': return 'bg-green-100 text-green-700 border-green-200';
-            case 'CLOSED': return 'bg-red-100 text-red-700 border-red-200';
+            case 'Active': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Closed': return 'bg-red-100 text-red-700 border-red-200';
             default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
     };
@@ -288,7 +288,7 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Year Status</label>
                         <div className="grid grid-cols-3 gap-2 p-1 bg-white border border-slate-200 rounded-xl max-w-sm">
-                            {(['DRAFT', 'ACTIVE', 'ARCHIVED'] as YearStatus[]).map((s) => (
+                            {(['Draft', 'Active', 'Archived'] as YearStatus[]).map((s) => (
                                 <button
                                     key={s} type="button" onClick={() => setStatus(s)}
                                     className={cn("py-1.5 text-xs font-bold rounded-lg transition-all", status === s ? "bg-primary-600 text-white shadow-md shadow-primary-100" : "text-slate-500 hover:bg-slate-50")}
@@ -394,13 +394,13 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
 
                                         {term.id && (
                                             <div className="flex gap-2 pt-2">
-                                                {term.status !== 'ACTIVE' && (
-                                                    <Button size="sm" variant="outline" className="text-[10px] h-7 px-2 border-green-200 text-green-600 hover:bg-green-50" onClick={() => handleUpdateTerm(index, { status: 'ACTIVE' })}>
+                                                {term.status !== 'Active' && (
+                                                    <Button size="sm" variant="outline" className="text-[10px] h-7 px-2 border-green-200 text-green-600 hover:bg-green-50" onClick={() => handleUpdateTerm(index, { status: 'Active' })}>
                                                         Set ACTIVE
                                                     </Button>
                                                 )}
-                                                {term.status === 'ACTIVE' && (
-                                                    <Button size="sm" variant="outline" className="text-[10px] h-7 px-2 border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleUpdateTerm(index, { status: 'CLOSED' })}>
+                                                {term.status === 'Active' && (
+                                                    <Button size="sm" variant="outline" className="text-[10px] h-7 px-2 border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleUpdateTerm(index, { status: 'Closed' })}>
                                                         Close Term
                                                     </Button>
                                                 )}
@@ -428,19 +428,19 @@ export const CreateAcademicYearModal = ({ isOpen, year, onClose, onSave }: Creat
                 </Button>
                 <Button
                     className="flex-1 bg-slate-800 hover:bg-slate-900 border-none"
-                    onClick={() => handleSave('DRAFT')}
+                    onClick={() => handleSave('Draft')}
                     disabled={isSaving}
                 >
                     <Save size={18} className="mr-2" />
                     {isSaving ? 'Processing...' : 'Save as Draft'}
                 </Button>
                 <Button
-                    className={cn("flex-1 shadow-lg shadow-green-100", status === 'ACTIVE' ? "bg-green-600 hover:bg-green-700" : "bg-primary-600 hover:bg-primary-700")}
-                    onClick={() => handleSave(status === 'DRAFT' ? 'ACTIVE' : status)}
+                    className={cn("flex-1 shadow-lg shadow-green-100", status === 'Active' ? "bg-green-600 hover:bg-green-700" : "bg-primary-600 hover:bg-primary-700")}
+                    onClick={() => handleSave(status === 'Draft' ? 'Active' : status)}
                     disabled={isSaving}
                 >
                     <Check size={18} className="mr-2" />
-                    {isSaving ? 'Processing...' : status === 'ACTIVE' ? 'Update & Activate' : 'Save & Activate'}
+                    {isSaving ? 'Processing...' : status === 'Active' ? 'Update & Activate' : 'Save & Activate'}
                 </Button>
             </div>
         </Modal>

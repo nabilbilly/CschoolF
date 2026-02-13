@@ -21,7 +21,7 @@ import { admissionsService } from '../../../services/admissionsService';
 // --- Types & Mock Data ---
 
 // --- Constants ---
-const STUDENT_STATUSES = ['ACTIVE', 'PENDING APPROVAL', 'INACTIVE'] as const;
+const STUDENT_STATUSES = ['Active', 'Pending Approval', 'Inactive'] as const;
 type StudentStatus = typeof STUDENT_STATUSES[number];
 
 export const AdminStudentManager = () => {
@@ -179,7 +179,7 @@ export const AdminStudentManager = () => {
             return;
         }
 
-        if (window.confirm(`Are you sure you want to APPROVE admission for ${selectedStudent.first_name} ${selectedStudent.last_name}?`)) {
+        if (window.confirm(`Are you sure you want to Approve admission for ${selectedStudent.first_name} ${selectedStudent.last_name}?`)) {
             setIsSaving(true);
             try {
                 await admissionsService.approveAdmission(selectedStudent.pending_admission_id);
@@ -201,7 +201,7 @@ export const AdminStudentManager = () => {
             return;
         }
 
-        if (window.confirm(`Are you sure you want to REJECT admission for ${selectedStudent.first_name} ${selectedStudent.last_name}?`)) {
+        if (window.confirm(`Are you sure you want to Reject admission for ${selectedStudent.first_name} ${selectedStudent.last_name}?`)) {
             setIsSaving(true);
             try {
                 await admissionsService.rejectAdmission(selectedStudent.pending_admission_id);
@@ -313,7 +313,7 @@ export const AdminStudentManager = () => {
                                             />
                                             <div>
                                                 <div className="font-medium text-slate-900">{student.first_name} {student.last_name}</div>
-                                                <div className="text-xs text-indigo-600 font-mono font-bold">{student.index_number || 'PENDING'}</div>
+                                                <div className="text-xs text-indigo-600 font-mono font-bold">{student.index_number || 'Pending'}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -729,9 +729,9 @@ const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
 
 const StatusBadge = ({ status, size = 'md' }: { status: StudentStatus, size?: 'sm' | 'md' }) => {
     const styles: Record<string, string> = {
-        'ACTIVE': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'PENDING APPROVAL': 'bg-blue-50 text-blue-700 border-blue-200',
-        'INACTIVE': 'bg-slate-50 text-slate-500 border-slate-200',
+        'Active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        'Pending Approval': 'bg-blue-50 text-blue-700 border-blue-200',
+        'Inactive': 'bg-slate-50 text-slate-500 border-slate-200',
     };
 
     return (

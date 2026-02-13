@@ -34,7 +34,7 @@ const paymentLogs = [
         status: "Pending",
         date: "2024-12-28",
         method: "Mobile Money",
-        reference: "PENDING",
+        reference: "Pending",
         academicYear: "2024/2025"
     },
     {

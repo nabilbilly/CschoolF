@@ -20,7 +20,7 @@ type StudentResult = {
     totalScore: number;
     average: number;
     position: number;
-    status: 'PENDING' | 'APPROVED' | 'LOCKED' | 'CORRECTION NEEDED';
+    status: 'Pending' | 'Approved' | 'Locked' | 'Correction Needed';
     promotion: 'Promoted' | 'Repeated' | 'Probation';
     subjects: {
         name: string;
@@ -43,7 +43,7 @@ const mockStudents: StudentResult[] = Array.from({ length: 25 }).map((_, i) => (
     totalScore: Math.floor(Math.random() * (900 - 400) + 400),
     average: Math.floor(Math.random() * (95 - 45) + 45),
     position: i + 1,
-    status: (['PENDING', 'APPROVED', 'LOCKED', 'CORRECTION NEEDED'] as const)[Math.floor(Math.random() * 4)],
+    status: (['Pending', 'Approved', 'Locked', 'Correction Needed'] as const)[Math.floor(Math.random() * 4)],
     promotion: (['Promoted', 'Promoted', 'Promoted', 'Probation', 'Repeated'] as const)[Math.floor(Math.random() * 5)],
     subjects: [
         { name: 'Mathematics', classScore: 25, examScore: 60, total: 85, grade: 'A', remarks: 'Excellent' },
@@ -394,7 +394,7 @@ export const HeadTeacherResultsManager = () => {
 
                             {/* Sticky Footer Actions */}
                             <div className="sticky bottom-0 bg-white border-t border-slate-200 p-6 flex gap-3">
-                                {selectedStudent.status !== 'APPROVED' && (
+                                {selectedStudent.status !== 'Approved' && (
                                     <Button onClick={handleApprove} className="flex-1 bg-green-600 hover:bg-green-700">
                                         <CheckCircle className="mr-2 h-4 w-4" />
                                         Approve Result
@@ -434,17 +434,17 @@ export const HeadTeacherResultsManager = () => {
 
 const StatusBadge = ({ status }: { status: string }) => {
     const styles = {
-        'APPROVED': 'bg-green-100 text-green-700 border-green-200',
-        'PENDING': 'bg-amber-50 text-amber-700 border-amber-200',
-        'LOCKED': 'bg-slate-100 text-slate-700 border-slate-200',
-        'CORRECTION NEEDED': 'bg-red-50 text-red-700 border-red-200'
+        'Approved': 'bg-green-100 text-green-700 border-green-200',
+        'Pending': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Locked': 'bg-slate-100 text-slate-700 border-slate-200',
+        'Correction Needed': 'bg-red-50 text-red-700 border-red-200'
     };
 
     const icons = {
-        'APPROVED': CheckCircle,
-        'PENDING': AlertCircle,
-        'LOCKED': Lock,
-        'CORRECTION NEEDED': XCircle
+        'Approved': CheckCircle,
+        'Pending': AlertCircle,
+        'Locked': Lock,
+        'Correction Needed': XCircle
     };
 
     const Icon = icons[status as keyof typeof icons] || AlertCircle;

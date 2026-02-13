@@ -23,7 +23,7 @@ export const AdmissionVerification = () => {
         const fetchYear = async () => {
             try {
                 const years = await evoucherService.getAcademicYears();
-                const active = years.find(y => y.status === 'ACTIVE');
+                const active = years.find(y => y.status === 'Active');
                 if (active) setActiveYearName(active.name);
             } catch (err) {
                 console.error('Failed to fetch academic year:', err);
@@ -55,11 +55,11 @@ export const AdmissionVerification = () => {
                 }, 1500);
             } else {
                 const reasons: Record<string, string> = {
-                    'INVALID_PIN': 'The PIN you entered is incorrect.',
-                    'NOT_FOUND': 'Voucher number not found. Please check and try again.',
-                    'EXPIRED': 'This voucher has expired.',
-                    'USED': 'This voucher has already been used.',
-                    'RESERVED': 'This voucher is currently in use in another session. Please try re-verifying to resume.'
+                    'Invalid Pin': 'The PIN you entered is incorrect.',
+                    'Not Found': 'Voucher number not found. Please check and try again.',
+                    'Expired': 'This voucher has expired.',
+                    'Used': 'This voucher has already been used.',
+                    'Reserved': 'This voucher is currently in use in another session. Please try re-verifying to resume.'
                 };
                 setError(reasons[response.reason || ''] || 'Verification failed. Please try again.');
                 setIsLoading(false);

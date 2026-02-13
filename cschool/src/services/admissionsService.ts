@@ -21,7 +21,7 @@ export interface AdmissionResponse {
     stream_id: number | null;
     term_id: number;
     voucher_id: number;
-    status: 'Pending' | 'Approved' | 'Rejected' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    status: 'Pending' | 'Approved' | 'Rejected';
     student_name: string;
     voucher_number: string;
     class_name: string;

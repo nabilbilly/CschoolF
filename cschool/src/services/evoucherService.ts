@@ -3,7 +3,7 @@ import { fetchApi } from './api';
 export interface AcademicYear {
     id: number;
     name: string;
-    status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
+    status: 'Active' | 'Draft' | 'Archived';
 }
 
 export interface EVoucher {

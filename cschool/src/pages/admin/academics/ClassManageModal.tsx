@@ -20,7 +20,7 @@ export const ClassManageModal = ({ isOpen, onClose, onSave, classRoom }: ClassMa
     // Form State
     const [name, setName] = useState('');
     const [level, setLevel] = useState('Primary');
-    const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+    const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
     const [streams, setStreams] = useState<string[]>([]);
     const [newStreamName, setNewStreamName] = useState('');
 
@@ -33,7 +33,7 @@ export const ClassManageModal = ({ isOpen, onClose, onSave, classRoom }: ClassMa
         } else {
             setName('');
             setLevel('Primary');
-            setStatus('ACTIVE');
+            setStatus('Active');
             setStreams([]);
         }
         setError(null);
@@ -177,8 +177,8 @@ export const ClassManageModal = ({ isOpen, onClose, onSave, classRoom }: ClassMa
                             value={status}
                             onChange={(e) => setStatus(e.target.value as any)}
                         >
-                            <option value="ACTIVE">Active</option>
-                            <option value="INACTIVE">Inactive</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
 
