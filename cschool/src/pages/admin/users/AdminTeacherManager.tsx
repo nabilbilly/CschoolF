@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 
 // --- Types & Mock Data ---
 
-type TeacherStatus = 'Active' | 'On Leave' | 'Inactive';
+type TeacherStatus = 'ACTIVE' | 'ON LEAVE' | 'INACTIVE';
 
 interface Teacher {
     id: string;
@@ -55,7 +55,7 @@ const mockTeachers: Teacher[] = Array.from({ length: 20 }).map((_, i) => ({
     phone: '0244123456',
     role: i === 0 ? 'Head of Dept' : i < 5 ? 'Class Teacher' : 'Teacher',
     department: ['Science', 'Mathematics', 'English', 'History'][i % 4],
-    status: i === 3 ? 'On Leave' : i === 19 ? 'Inactive' : 'Active',
+    status: i === 3 ? 'ON LEAVE' : i === 19 ? 'INACTIVE' : 'ACTIVE',
     joinDate: '2020-09-01',
     qualifications: ['B.Ed. Education', 'M.Sc. Subject Specialist'],
     subjects: ['Mathematics', 'Physics'],
@@ -156,9 +156,9 @@ export const AdminTeacherManager = () => {
                     className="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-500"
                 >
                     <option value="All">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="On Leave">On Leave</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="ON LEAVE">On Leave</option>
+                    <option value="INACTIVE">Inactive</option>
                 </select>
             </div>
 
@@ -279,12 +279,12 @@ export const AdminTeacherManager = () => {
                                                 </h4>
                                                 <div className="flex gap-3">
                                                     <Button variant="outline" size="sm">Reset Password</Button>
-                                                    {selectedTeacher.status === 'Active' ? (
-                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('Inactive')} className="text-red-600 border-red-200 hover:bg-red-50">
+                                                    {selectedTeacher.status === 'ACTIVE' ? (
+                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('INACTIVE')} className="text-red-600 border-red-200 hover:bg-red-50">
                                                             Deactivate Account
                                                         </Button>
                                                     ) : (
-                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('Active')} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                                                        <Button variant="outline" size="sm" onClick={() => handleStatusChange('ACTIVE')} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
                                                             Activate Account
                                                         </Button>
                                                     )}
@@ -453,9 +453,9 @@ const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
 
 const StatusBadge = ({ status, size = 'md' }: { status: TeacherStatus, size?: 'sm' | 'md' }) => {
     const styles = {
-        'Active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'On Leave': 'bg-amber-50 text-amber-700 border-amber-200',
-        'Inactive': 'bg-slate-100 text-slate-500 border-slate-200',
+        'ACTIVE': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        'ON LEAVE': 'bg-amber-50 text-amber-700 border-amber-200',
+        'INACTIVE': 'bg-slate-100 text-slate-500 border-slate-200',
     };
 
     return (

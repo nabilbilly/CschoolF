@@ -21,7 +21,7 @@ import { admissionsService } from '../../../services/admissionsService';
 // --- Types & Mock Data ---
 
 // --- Constants ---
-const STUDENT_STATUSES = ['Active', 'Pending Approval', 'Inactive'] as const;
+const STUDENT_STATUSES = ['ACTIVE', 'PENDING APPROVAL', 'INACTIVE'] as const;
 type StudentStatus = typeof STUDENT_STATUSES[number];
 
 export const AdminStudentManager = () => {
