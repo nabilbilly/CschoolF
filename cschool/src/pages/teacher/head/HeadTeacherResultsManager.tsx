@@ -394,7 +394,7 @@ export const HeadTeacherResultsManager = () => {
 
                             {/* Sticky Footer Actions */}
                             <div className="sticky bottom-0 bg-white border-t border-slate-200 p-6 flex gap-3">
-                                {selectedStudent.status !== 'Approved' && (
+                                {selectedStudent.status !== 'APPROVED' && (
                                     <Button onClick={handleApprove} className="flex-1 bg-green-600 hover:bg-green-700">
                                         <CheckCircle className="mr-2 h-4 w-4" />
                                         Approve Result
